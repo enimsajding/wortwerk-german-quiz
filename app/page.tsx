@@ -1,18 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BookOpen, Check, Flame, RotateCcw, Trophy, X } from 'lucide-react';
-
-type Question = {
-  prompt: string;
-  context?: string;
-  options: string[];
-  answer: number;
-  note: string;
-  tag: string;
-};
+import { expandQuestionBank, randomQuiz, type QuizQuestion } from './questionBank';
 
 type Level = 'beginner' | 'intermediate' | 'advanced';
 
-const beginnerQuestions: Question[] = [
+const beginnerQuestions: QuizQuestion[] = [
   { prompt: 'How do you say “Good morning” in German?', options: ['Gute Nacht', 'Guten Morgen', 'Guten Abend', 'Auf Wiedersehen'], answer: 1, note: '“Guten Morgen” is the standard greeting used in the morning.', tag: 'Greetings' },
   { prompt: 'Choose the correct article:', context: '___ Apfel ist rot.', options: ['Der', 'Die', 'Das', 'Den'], answer: 0, note: '“Apfel” is masculine, so its nominative article is “der”.', tag: 'Articles' },
   { prompt: 'What does “Ich habe Hunger” mean?', options: ['I am tired', 'I am thirsty', 'I am hungry', 'I am cold'], answer: 2, note: 'Literally, German says “I have hunger” rather than “I am hungry”.', tag: 'Phrases' },
@@ -27,7 +19,7 @@ const beginnerQuestions: Question[] = [
   { prompt: 'Which sentence is in the past tense?', options: ['Ich fahre nach Hause.', 'Ich werde nach Hause fahren.', 'Ich bin nach Hause gefahren.', 'Ich möchte nach Hause fahren.'], answer: 2, note: 'The perfect tense uses “bin” plus the past participle “gefahren”.', tag: 'Grammar' },
 ];
 
-const intermediateQuestions: Question[] = [
+const intermediateQuestions: QuizQuestion[] = [
   { prompt: 'Choose the correct relative pronoun:', context: 'Das ist der Mann, ___ mir geholfen hat.', options: ['den', 'dem', 'der', 'dessen'], answer: 2, note: 'The relative pronoun is the subject of “geholfen hat”, so masculine nominative “der” is required.', tag: 'Relative clauses' },
   { prompt: 'Which sentence correctly uses the subjunctive?', options: ['Wenn ich Zeit habe, reiste ich.', 'Wenn ich Zeit hätte, würde ich reisen.', 'Wenn ich Zeit hatte, werde ich reisen.', 'Wenn ich Zeit würde, reise ich.'], answer: 1, note: 'Konjunktiv II uses “hätte” and often “würde + infinitive” for hypothetical situations.', tag: 'Konjunktiv II' },
   { prompt: 'What does “sich um etwas kümmern” mean?', options: ['to complain about something', 'to take care of something', 'to remember something', 'to apply for something'], answer: 1, note: '“Sich kümmern um + accusative” means to look after or take care of something.', tag: 'Vocabulary' },
@@ -40,7 +32,7 @@ const intermediateQuestions: Question[] = [
   { prompt: 'Which sentence has the correct word order?', options: ['Ich weiß, dass er morgen kommt.', 'Ich weiß, dass morgen er kommt.', 'Ich weiß, dass er kommt morgen.', 'Ich weiß, dass kommt er morgen.'], answer: 0, note: 'In a “dass” clause, the conjugated verb moves to the end.', tag: 'Word order' },
 ];
 
-const advancedQuestions: Question[] = [
+const advancedQuestions: QuizQuestion[] = [
   { prompt: 'Choose the most idiomatic completion:', context: 'Die Reform stieß in der Bevölkerung auf ___.', options: ['Widerspruch', 'Gegensatz', 'Gegenwort', 'Widerstandung'], answer: 0, note: 'The fixed collocation is “auf Widerspruch stoßen” — to meet with opposition.', tag: 'Collocations' },
   { prompt: 'Which sentence correctly uses reported speech?', options: ['Er sagte, er ist krank.', 'Er sagte, er sei krank.', 'Er sagte, er wäre krank gewesen sein.', 'Er sagte, sei er krank.'], answer: 1, note: 'Formal reported speech uses Konjunktiv I: “Er sagte, er sei krank.”', tag: 'Konjunktiv I' },
   { prompt: 'What does “etwas in Kauf nehmen” mean?', options: ['to purchase something', 'to accept a drawback', 'to negotiate a price', 'to return a product'], answer: 1, note: 'The idiom means accepting an undesirable consequence in pursuit of something else.', tag: 'Idioms' },
@@ -53,11 +45,13 @@ const advancedQuestions: Question[] = [
   { prompt: 'Choose the correct genitive form:', context: 'Trotz ___ Einwände wurde der Plan beschlossen.', options: ['zahlreiche', 'zahlreichen', 'zahlreicher', 'zahlreiches'], answer: 2, note: 'Without an article, the adjective carries the strong genitive plural ending “-er”.', tag: 'Case system' },
 ];
 
-const questionSets: Record<Level, Question[]> = {
-  beginner: beginnerQuestions,
-  intermediate: intermediateQuestions,
-  advanced: advancedQuestions,
+const questionSets: Record<Level, QuizQuestion[]> = {
+  beginner: expandQuestionBank(beginnerQuestions),
+  intermediate: expandQuestionBank(intermediateQuestions),
+  advanced: expandQuestionBank(advancedQuestions),
 };
+
+const SESSION_SIZE = 20;
 
 const levelInfo: Record<Level, { label: string; cefr: string; description: string }> = {
   beginner: { label: 'Foundations', cefr: 'A1–A2', description: 'Everyday words, articles and essential phrases' },
@@ -73,12 +67,13 @@ export default function Home() {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [best, setBest] = useState(0);
-  const questions = questionSets[level];
+  const [questions, setQuestions] = useState(() => randomQuiz(questionSets.beginner, SESSION_SIZE));
   const complete = index >= questions.length;
   const question = questions[index];
 
   useEffect(() => {
     setBest(Number(localStorage.getItem(`wortwerk-best-${level}`) || 0));
+    setQuestions(randomQuiz(questionSets[level], SESSION_SIZE));
   }, [level]);
 
   const percent = useMemo(() => Math.round((index / questions.length) * 100), [index]);
@@ -103,7 +98,8 @@ export default function Home() {
     }
   };
 
-  const restart = () => {
+  const startPractice = () => {
+    setQuestions(randomQuiz(questionSets[level], SESSION_SIZE));
     setStarted(true);
     setIndex(0);
     setSelected(null);
@@ -128,8 +124,8 @@ export default function Home() {
             <div className="level-picker">
               {(Object.keys(levelInfo) as Level[]).map((item) => <button key={item} className={level === item ? 'active' : ''} onClick={() => setLevel(item)}><span>{levelInfo[item].cefr}</span><b>{levelInfo[item].label}</b><small>{levelInfo[item].description}</small></button>)}
             </div>
-            <button className="primary" onClick={() => setStarted(true)}>Start practice <ArrowRight size={19} /></button>
-            <div className="session-note"><BookOpen size={17}/><span><b>{questions.length} questions · {levelInfo[level].cefr}</b><small>About 5 minutes</small></span></div>
+            <button className="primary" onClick={startPractice}>Start random practice <ArrowRight size={19} /></button>
+            <div className="session-note"><BookOpen size={17}/><span><b>{SESSION_SIZE} random questions · {levelInfo[level].cefr}</b><small>{questionSets[level].length.toLocaleString()} variations in this bank</small></span></div>
           </div>
           <div className="word-stack" aria-hidden="true">
             <div className="card card-one"><small>die Neugier</small><strong>curiosity</strong><span>NOY-geer</span></div>
@@ -147,7 +143,7 @@ export default function Home() {
             <div><strong>{Math.round(score/questions.length*100)}%</strong><span>ACCURACY</span></div>
             <div><strong>{best}/{questions.length}</strong><span>PERSONAL BEST</span></div>
           </div>
-          <button className="primary" onClick={restart}><RotateCcw size={18}/> Practise again</button>
+          <button className="primary" onClick={startPractice}><RotateCcw size={18}/> New random quiz</button>
         </section>
       ) : (
         <section className="quiz" id="quiz">
