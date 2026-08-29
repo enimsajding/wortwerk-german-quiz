@@ -91,25 +91,18 @@ export type QuizDraw = {
   questions: QuizQuestion[];
   usedIds: string[];
   remaining: number;
-  cycleRestarted: boolean;
+  exhausted: boolean;
 };
 
-/** Draws a session without repeating an exact question until the entire bank is used. */
+/** Draws a session without ever recycling an exact question. */
 export function drawPersistentQuiz(
   pool: QuizQuestion[],
   previouslyUsedIds: string[],
   size = 10,
 ): QuizDraw {
   const validIds = new Set(pool.map((question) => question.id).filter(Boolean));
-  let used = new Set(previouslyUsedIds.filter((id) => validIds.has(id)));
-  let available = pool.filter((question) => question.id && !used.has(question.id));
-  let cycleRestarted = false;
-
-  if (available.length === 0) {
-    used = new Set();
-    available = pool;
-    cycleRestarted = true;
-  }
+  const used = new Set(previouslyUsedIds.filter((id) => validIds.has(id)));
+  const available = pool.filter((question) => question.id && !used.has(question.id));
 
   const questions = randomQuiz(available, Math.min(size, available.length));
   for (const question of questions) {
@@ -120,6 +113,6 @@ export function drawPersistentQuiz(
     questions,
     usedIds: [...used],
     remaining: pool.length - used.size,
-    cycleRestarted,
+    exhausted: pool.length - used.size === 0,
   };
 }

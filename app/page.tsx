@@ -68,6 +68,7 @@ export default function Home() {
   const [streak, setStreak] = useState(0);
   const [best, setBest] = useState(0);
   const [remaining, setRemaining] = useState(questionSets.beginner.length);
+  const [exhausted, setExhausted] = useState(false);
   const [questions, setQuestions] = useState(() => randomQuiz(questionSets.beginner, SESSION_SIZE));
   const complete = index >= questions.length;
   const question = questions[index];
@@ -76,7 +77,9 @@ export default function Home() {
     setBest(Number(localStorage.getItem(`wortwerk-best-${level}`) || 0));
     setQuestions(randomQuiz(questionSets[level], SESSION_SIZE));
     const saved = JSON.parse(localStorage.getItem(`wortwerk-used-${level}`) || '[]') as string[];
-    setRemaining(Math.max(0, questionSets[level].length - saved.length));
+    const unseen = Math.max(0, questionSets[level].length - saved.length);
+    setRemaining(unseen);
+    setExhausted(unseen === 0);
   }, [level]);
 
   const percent = useMemo(() => Math.round((index / questions.length) * 100), [index]);
@@ -113,6 +116,11 @@ export default function Home() {
     localStorage.setItem(storageKey, JSON.stringify(draw.usedIds));
     setQuestions(draw.questions);
     setRemaining(draw.remaining);
+    setExhausted(draw.exhausted || draw.questions.length === 0);
+    if (draw.questions.length === 0) {
+      setStarted(false);
+      return;
+    }
     setStarted(true);
     setIndex(0);
     setSelected(null);
@@ -137,8 +145,8 @@ export default function Home() {
             <div className="level-picker">
               {(Object.keys(levelInfo) as Level[]).map((item) => <button key={item} className={level === item ? 'active' : ''} onClick={() => setLevel(item)}><span>{levelInfo[item].cefr}</span><b>{levelInfo[item].label}</b><small>{levelInfo[item].description}</small></button>)}
             </div>
-            <button className="primary" onClick={startPractice}>Start random practice <ArrowRight size={19} /></button>
-            <div className="session-note"><BookOpen size={17}/><span><b>{SESSION_SIZE} unseen questions · {levelInfo[level].cefr}</b><small>{remaining.toLocaleString()} of {questionSets[level].length.toLocaleString()} remain before the deck resets</small></span></div>
+            <button className="primary" onClick={startPractice} disabled={exhausted}>{exhausted ? 'Question bank completed' : 'Start unseen practice'} {!exhausted && <ArrowRight size={19} />}</button>
+            <div className="session-note"><BookOpen size={17}/><span><b>{Math.min(SESSION_SIZE, remaining)} unseen questions · {levelInfo[level].cefr}</b><small>{exhausted ? 'Every unique question in this level has been completed' : `${remaining.toLocaleString()} of ${questionSets[level].length.toLocaleString()} remain — used questions never return`}</small></span></div>
           </div>
           <div className="word-stack" aria-hidden="true">
             <div className="card card-one"><small>die Neugier</small><strong>curiosity</strong><span>NOY-geer</span></div>
