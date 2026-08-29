@@ -1,4 +1,5 @@
 export type QuizQuestion = {
+  sourceId?: string;
   prompt: string;
   context?: string;
   options: string[];
@@ -53,6 +54,7 @@ export function expandQuestionBank(seeds: QuizQuestion[]): QuizQuestion[] {
         const rotated = rotateOptions(seed, seedIndex + frameIndex + contextIndex);
         return {
           ...rotated,
+          sourceId: `question-${seedIndex}`,
           prompt: frame(seed.prompt),
           tag: `${seed.tag} · ${learningContext}`,
         };
@@ -61,7 +63,7 @@ export function expandQuestionBank(seeds: QuizQuestion[]): QuizQuestion[] {
   );
 }
 
-export function randomQuiz(pool: QuizQuestion[], size = 20): QuizQuestion[] {
+export function randomQuiz(pool: QuizQuestion[], size = 10): QuizQuestion[] {
   const copy = [...pool];
   for (let index = copy.length - 1; index > 0; index -= 1) {
     const swapWith = Math.floor(Math.random() * (index + 1));
@@ -69,13 +71,12 @@ export function randomQuiz(pool: QuizQuestion[], size = 20): QuizQuestion[] {
   }
 
   const selected: QuizQuestion[] = [];
-  const promptCounts = new Map<string, number>();
+  const usedSources = new Set<string>();
   for (const question of copy) {
-    const corePrompt = question.prompt.replace(/^[^:]+:\s*/, '');
-    const count = promptCounts.get(corePrompt) || 0;
-    if (count < 2) {
+    const source = question.sourceId || question.prompt;
+    if (!usedSources.has(source)) {
       selected.push(question);
-      promptCounts.set(corePrompt, count + 1);
+      usedSources.add(source);
     }
     if (selected.length === size) break;
   }

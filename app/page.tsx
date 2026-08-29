@@ -51,7 +51,7 @@ const questionSets: Record<Level, QuizQuestion[]> = {
   advanced: expandQuestionBank(advancedQuestions),
 };
 
-const SESSION_SIZE = 20;
+const SESSION_SIZE = 10;
 
 const levelInfo: Record<Level, { label: string; cefr: string; description: string }> = {
   beginner: { label: 'Foundations', cefr: 'A1–A2', description: 'Everyday words, articles and essential phrases' },
