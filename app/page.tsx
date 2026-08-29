@@ -129,8 +129,8 @@ export default function Home() {
           </div>
           <div className="word-stack" aria-hidden="true">
             <div className="card card-one"><small>die Neugier</small><strong>curiosity</strong><span>NOY-geer</span></div>
-            <div className="card card-two"><small>der Fortschritt</small><strong>progress</strong><span>FORT-shrit</span></div>
-            <div className="card card-three"><small>los geht&apos;s!</small><strong>let&apos;s go!</strong><span>lohs gates</span></div>
+            <div className="card card-two"><small>der Fortschritt</small><strong>progress</strong></div>
+            <div className="card card-three"><small>los geht&apos;s!</small><strong>let&apos;s go!</strong></div>
           </div>
         </section>
       ) : complete ? (
