@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BookOpen, Check, Flame, RotateCcw, Trophy, X } from 'lucide-react';
-import { expandQuestionBank, randomQuiz, type QuizQuestion } from './questionBank';
+import { drawPersistentQuiz, expandQuestionBank, randomQuiz, type QuizQuestion } from './questionBank';
 
 type Level = 'beginner' | 'intermediate' | 'advanced';
 
@@ -67,6 +67,7 @@ export default function Home() {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [best, setBest] = useState(0);
+  const [remaining, setRemaining] = useState(questionSets.beginner.length);
   const [questions, setQuestions] = useState(() => randomQuiz(questionSets.beginner, SESSION_SIZE));
   const complete = index >= questions.length;
   const question = questions[index];
@@ -74,6 +75,8 @@ export default function Home() {
   useEffect(() => {
     setBest(Number(localStorage.getItem(`wortwerk-best-${level}`) || 0));
     setQuestions(randomQuiz(questionSets[level], SESSION_SIZE));
+    const saved = JSON.parse(localStorage.getItem(`wortwerk-used-${level}`) || '[]') as string[];
+    setRemaining(Math.max(0, questionSets[level].length - saved.length));
   }, [level]);
 
   const percent = useMemo(() => Math.round((index / questions.length) * 100), [index]);
@@ -99,7 +102,17 @@ export default function Home() {
   };
 
   const startPractice = () => {
-    setQuestions(randomQuiz(questionSets[level], SESSION_SIZE));
+    const storageKey = `wortwerk-used-${level}`;
+    let usedIds: string[] = [];
+    try {
+      usedIds = JSON.parse(localStorage.getItem(storageKey) || '[]') as string[];
+    } catch {
+      usedIds = [];
+    }
+    const draw = drawPersistentQuiz(questionSets[level], usedIds, SESSION_SIZE);
+    localStorage.setItem(storageKey, JSON.stringify(draw.usedIds));
+    setQuestions(draw.questions);
+    setRemaining(draw.remaining);
     setStarted(true);
     setIndex(0);
     setSelected(null);
@@ -125,7 +138,7 @@ export default function Home() {
               {(Object.keys(levelInfo) as Level[]).map((item) => <button key={item} className={level === item ? 'active' : ''} onClick={() => setLevel(item)}><span>{levelInfo[item].cefr}</span><b>{levelInfo[item].label}</b><small>{levelInfo[item].description}</small></button>)}
             </div>
             <button className="primary" onClick={startPractice}>Start random practice <ArrowRight size={19} /></button>
-            <div className="session-note"><BookOpen size={17}/><span><b>{SESSION_SIZE} random questions · {levelInfo[level].cefr}</b><small>{questionSets[level].length.toLocaleString()} variations in this bank</small></span></div>
+            <div className="session-note"><BookOpen size={17}/><span><b>{SESSION_SIZE} unseen questions · {levelInfo[level].cefr}</b><small>{remaining.toLocaleString()} of {questionSets[level].length.toLocaleString()} remain before the deck resets</small></span></div>
           </div>
           <div className="word-stack" aria-hidden="true">
             <div className="card card-one"><small>die Neugier</small><strong>curiosity</strong><span>NOY-geer</span></div>

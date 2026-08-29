@@ -1,4 +1,5 @@
 export type QuizQuestion = {
+  id?: string;
   sourceId?: string;
   prompt: string;
   context?: string;
@@ -54,6 +55,7 @@ export function expandQuestionBank(seeds: QuizQuestion[]): QuizQuestion[] {
         const rotated = rotateOptions(seed, seedIndex + frameIndex + contextIndex);
         return {
           ...rotated,
+          id: `question-${seedIndex}-frame-${frameIndex}-context-${contextIndex}`,
           sourceId: `question-${seedIndex}`,
           prompt: frame(seed.prompt),
           tag: `${seed.tag} · ${learningContext}`,
@@ -81,4 +83,41 @@ export function randomQuiz(pool: QuizQuestion[], size = 10): QuizQuestion[] {
     if (selected.length === size) break;
   }
   return selected;
+}
+
+export type QuizDraw = {
+  questions: QuizQuestion[];
+  usedIds: string[];
+  remaining: number;
+  cycleRestarted: boolean;
+};
+
+/** Draws a session without repeating an exact question until the entire bank is used. */
+export function drawPersistentQuiz(
+  pool: QuizQuestion[],
+  previouslyUsedIds: string[],
+  size = 10,
+): QuizDraw {
+  const validIds = new Set(pool.map((question) => question.id).filter(Boolean));
+  let used = new Set(previouslyUsedIds.filter((id) => validIds.has(id)));
+  let available = pool.filter((question) => question.id && !used.has(question.id));
+  let cycleRestarted = false;
+
+  if (available.length === 0) {
+    used = new Set();
+    available = pool;
+    cycleRestarted = true;
+  }
+
+  const questions = randomQuiz(available, Math.min(size, available.length));
+  for (const question of questions) {
+    if (question.id) used.add(question.id);
+  }
+
+  return {
+    questions,
+    usedIds: [...used],
+    remaining: pool.length - used.size,
+    cycleRestarted,
+  };
 }
