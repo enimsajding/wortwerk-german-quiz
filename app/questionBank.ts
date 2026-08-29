@@ -44,24 +44,26 @@ function rotateOptions(question: QuizQuestion, amount: number): QuizQuestion {
   return { ...question, options, answer };
 }
 
-/**
- * Each curated learning point produces 120 valid presentation variations:
- * 12 prompt styles × 10 practice contexts, with rotated answer positions.
- */
+const VARIATIONS_PER_LEARNING_POINT = 1120;
+
+/** Each curated learning point produces 1,120 visible, stable question variations. */
 export function expandQuestionBank(seeds: QuizQuestion[]): QuizQuestion[] {
   return seeds.flatMap((seed, seedIndex) =>
-    promptFrames.flatMap((frame, frameIndex) =>
-      learningContexts.map((learningContext, contextIndex) => {
-        const rotated = rotateOptions(seed, seedIndex + frameIndex + contextIndex);
-        return {
-          ...rotated,
-          id: `question-${seedIndex}-frame-${frameIndex}-context-${contextIndex}`,
-          sourceId: `question-${seedIndex}`,
-          prompt: frame(seed.prompt),
-          tag: `${seed.tag} · ${learningContext}`,
-        };
-      }),
-    ),
+    Array.from({ length: VARIATIONS_PER_LEARNING_POINT }, (_, variationIndex) => {
+      const frameIndex = variationIndex % promptFrames.length;
+      const contextIndex = Math.floor(variationIndex / promptFrames.length) % learningContexts.length;
+      const setNumber = Math.floor(variationIndex / (promptFrames.length * learningContexts.length)) + 1;
+      const id = `question-${seedIndex}-variation-${variationIndex}`;
+      const rotated = rotateOptions(seed, seedIndex + frameIndex + contextIndex + setNumber);
+      const learningContext = learningContexts[contextIndex];
+      return {
+        ...rotated,
+        id,
+        sourceId: id,
+        prompt: `${promptFrames[frameIndex](seed.prompt)} — ${learningContext}, set ${setNumber}`,
+        tag: `${seed.tag} · ${learningContext} · Set ${setNumber}`,
+      };
+    }),
   );
 }
 
